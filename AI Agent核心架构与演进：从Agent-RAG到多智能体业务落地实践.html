@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent 核心架构与演进 - 科技版</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            /* 科技风核心调色板 */
+            --bg-base: #030712; 
+            --bg-slide: #0b1120; 
+            --bg-card: rgba(15, 23, 42, 0.7); 
+            
+            --neon-blue: #00f0ff; 
+            --neon-green: #00ff9d; 
+            --neon-purple: #b026ff; 
+            --neon-orange: #f59e0b; 
+            
+            --text-main: #94a3b8; 
+            --text-bright: #f8fafc; 
+            --border-glow: rgba(0, 240, 255, 0.3);
+            --grid-color: rgba(0, 240, 255, 0.05);
+        }
+
+        * { box-sizing: border-box; }
+        
+        body {
+            background-color: var(--bg-base);
+            /* 科技感矩阵网格背景 */
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 40px 40px;
+            margin: 0;
+            padding: 40px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 50px;
+        }
+
+        .slide-container {
+            width: 1280px;
+            height: 720px;
+            background-color: var(--bg-slide);
+            border-radius: 16px;
+            box-shadow: 0 0 40px rgba(0, 240, 255, 0.1), inset 0 0 20px rgba(0, 240, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Noto Sans SC', sans-serif;
+            border: 1px solid var(--border-glow);
+        }
+
+        /* 顶部科技发光条 */
+        .slide-container::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 4px;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple), var(--neon-green));
+            box-shadow: 0 2px 10px var(--neon-blue);
+            z-index: 10;
+        }
+
+        /* 标题组件 */
+        .slide-title {
+            font-family: 'Rajdhani', 'Noto Sans SC', sans-serif;
+            font-size: 38px;
+            font-weight: 700;
+            color: var(--text-bright);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 1;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+        }
+        .slide-title::before {
+            content: '';
+            width: 8px; height: 38px;
+            background: var(--neon-blue);
+            border-radius: 2px;
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        /* 卡片系统 (玻璃拟物化 + 霓虹边框) */
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: 2px solid var(--neon-blue);
+            padding: 24px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            z-index: 1;
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            border-top-color: var(--neon-green);
+            box-shadow: 0 4px 20px rgba(0, 255, 157, 0.2);
+        }
+        .card h3 { 
+            margin-top: 0; 
+            color: var(--text-bright); 
+            font-size: 22px; 
+            margin-bottom: 15px; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px;
+            font-family: 'Rajdhani', 'Noto Sans SC', sans-serif;
+        }
+        .card p { color: var(--text-main); line-height: 1.6; margin: 0; font-size: 16px; }
+
+        /* 布局网格 */
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; width: 100%; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; width: 100%; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; }
+
+        /* 图标组件 */
+        .icon-circle {
+            width: 50px; height: 50px;
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--neon-blue);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+            box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+        .step-num {
+            font-size: 50px;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.05);
+            font-family: 'Rajdhani', sans-serif;
+            position: absolute;
+            top: 10px; right: 20px;
+            -webkit-text-stroke: 1px rgba(0, 240, 255, 0.2);
+        }
+
+        /* 过场页特殊样式 */
+        .section-header {
+            text-align: center;
+            margin: auto;
+        }
+        .section-header h2 { 
+            font-size: 60px; 
+            color: var(--text-bright); 
+            margin-bottom: 20px;
+            font-family: 'Rajdhani', 'Noto Sans SC', sans-serif;
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+        }
+        .section-header hr { 
+            width: 100px; height: 4px; 
+            background: var(--neon-blue); 
+            border: none; margin: 0 auto; 
+            border-radius: 2px; 
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        /* 列表与强调 */
+        ul { padding-left: 20px; margin: 10px 0; }
+        li { margin-bottom: 12px; color: var(--text-main); font-size: 16px; }
+        li b { color: var(--text-bright); }
+        .highlight { color: var(--neon-blue); font-weight: 700; text-shadow: 0 0 5px rgba(0, 240, 255, 0.4); }
+        .highlight-green { color: var(--neon-green); font-weight: 700; }
+        .highlight-purple { color: var(--neon-purple); font-weight: 700; }
+        .highlight-orange { color: var(--neon-orange); font-weight: 700; text-shadow: 0 0 5px rgba(245, 158, 11, 0.4); }
+
+        /* 科技风流程节点图 */
+        .tech-flow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 20px 0;
+        }
+        .tech-node {
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px solid var(--neon-blue);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            width: 220px;
+            color: var(--text-bright);
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+            position: relative;
+        }
+        .tech-node span {
+            display: block;
+            font-size: 13px;
+            color: var(--text-main);
+            margin-top: 8px;
+            font-weight: 400;
+        }
+        .tech-arrow {
+            color: var(--neon-blue);
+            font-size: 24px;
+            animation: pulse-glow 2s infinite;
+        }
+        @keyframes pulse-glow {
+            0% { opacity: 0.5; text-shadow: 0 0 5px var(--neon-blue); }
+            50% { opacity: 1; text-shadow: 0 0 20px var(--neon-blue); }
+            100% { opacity: 0.5; text-shadow: 0 0 5px var(--neon-blue); }
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -100; }
+        }
+
+        /* 数据流向装饰线 */
+        .data-line {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+            width: 100%;
+            margin: 20px 0;
+            opacity: 0.5;
+        }
+
+        /* 表格科技风 */
+        table { width: 100%; border-collapse: collapse; }
+        th { background: rgba(0, 240, 255, 0.05); text-align: left; padding: 15px; border-bottom: 2px solid var(--neon-blue); color: var(--text-bright); }
+        td { padding: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: var(--text-main); }
+    </style>
+</head>
+<body>
+
+<!-- Slide 1: 封面 -->
+<div class="slide-container">
+    <div class="section-header">
+        <div style="background: rgba(0, 240, 255, 0.1); border: 1px solid var(--neon-blue); color: var(--neon-blue); padding: 8px 24px; border-radius: 4px; display: inline-block; font-weight: 600; margin-bottom: 30px; letter-spacing: 2px;">
+            SYSTEM ARCHITECTURE / V2.0
+        </div>
+        <h1 style="font-size: 72px; margin: 0; letter-spacing: 2px; color: var(--text-bright); font-family: 'Rajdhani', sans-serif;">
+            AI AGENT <span style="color:var(--neon-blue); text-shadow: 0 0 20px var(--neon-blue);">核心架构</span>与演进
+        </h1>
+        <p style="font-size: 24px; color: var(--text-main); margin-top: 20px; font-weight: 300;">构建具备感知、规划、记忆与执行能力的“数字员工”体系</p>
+        <hr style="margin-top: 40px;">
+    </div>
+</div>
+
+<!-- Slide 2: 目录 -->
+<div class="slide-container">
+    <h2 class="slide-title">系统加载：架构大纲 / INITIALIZATION</h2>
+    <div class="grid-2">
+        <div class="card">
+            <ul style="list-style: none; padding: 0;">
+                <li><b class="highlight">01.</b> AI Agent 理论基础与演进脉络</li>
+                <li><b class="highlight">02.</b> AI Agent vs 传统 RAG 深度对比</li>
+                <li><b class="highlight">03.</b> AI Agent 核心架构图</li>
+                <li><b class="highlight">04.</b> 感知层 (Perception) 深度拆解</li>
+                <li><b class="highlight">05.</b> 决策层 (Cognition) 深度拆解</li>
+            </ul>
+        </div>
+        <div class="card" style="border-top-color: var(--neon-green)">
+            <ul style="list-style: none; padding: 0;">
+                <li><b class="highlight-green">06.</b> 执行层 (Action) 深度拆解</li>
+                <li><b class="highlight-green">07.</b> 反思层 (Reflection) 深度拆解</li>
+                <li><b class="highlight-green">08.</b> Agent-RAG 闭环引擎与记忆系统</li>
+                <li><b class="highlight-green">09.</b> 多智能体协作模式 (Multi-Agent)</li>
+                <li><b class="highlight-green">10.</b> 落地最佳实践与未来演进</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 3: 过场 - 理论基础 -->
+<div class="slide-container" style="justify-content: center;">
+    <div class="section-header">
+        <h2>01. AI Agent 理论基础</h2>
+        <p>重新定义大模型：从“知识问答框”到“任务执行器”</p>
+        <hr>
+    </div>
+</div>
+
+<!-- Slide 4: 理论基础 - 定义 -->
+<div class="slide-container">
+    <div class="slide-subtitle" style="color: var(--neon-blue); font-family: 'Rajdhani', sans-serif; letter-spacing: 2px; margin-bottom: 10px;">SYSTEM_DEFINE</div>
+    <h2 class="slide-title">什么是 AI Agent？</h2>
+    <div class="grid-2">
+        <div class="card">
+            <h3><i class="fa-solid fa-microchip"></i> 核心定义</h3>
+            <p>AI Agent 是一种能够感知环境、进行自主规划、调用外部工具并实现既定目标的智能系统。它将大模型（LLM）从单纯的文本生成器升级为了系统的<b>大脑控制器</b>。</p>
+        </div>
+        <div class="card">
+            <h3><i class="fa-solid fa-code"></i> 计算演进公式</h3>
+            <div style="font-size: 32px; font-weight: 700; text-align: center; margin-top: 20px; font-family: 'Rajdhani', sans-serif;">
+                Agent = <span class="highlight">LLM</span> + <span class="highlight-green">Planning</span> + <br>
+                <span class="highlight-purple">Memory</span> + <span style="color:#f59e0b">Tools</span>
+            </div>
+        </div>
+    </div>
+    <div class="card" style="margin-top: 24px; background: rgba(0, 240, 255, 0.05); border-color: var(--neon-blue);">
+        <p><i class="fa-solid fa-satellite-dish highlight"></i> 基于强化学习与目标驱动（Goal-oriented），Agent 能够自主处理执行过程中的不确定性，遇到错误主动反思并寻找新路径，实现真正的“数字员工”闭环。</p>
+    </div>
+</div>
+
+<!-- Slide 5: RAG 技术演进路线 -->
+<div class="slide-container">
+    <h2 class="slide-title">RAG 演进：检索增强的升维之路</h2>
+    <div class="grid-4" style="margin-top: auto; margin-bottom: auto;">
+        <div class="card" style="text-align: center;">
+            <div class="icon-circle" style="margin: 0 auto 15px;">v1</div>
+            <h3 style="justify-content: center;">Naive RAG</h3>
+            <p>关键词/向量检索 + 生成。依赖余弦相似度匹配，受限于语义鸿沟。</p>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div class="icon-circle" style="margin: 0 auto 15px;">v2</div>
+            <h3 style="justify-content: center;">Advanced RAG</h3>
+            <p>增加重排 (Rerank)、查询改写、分块优化。大幅提升命中率与精准度。</p>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div class="icon-circle" style="margin: 0 auto 15px;">v3</div>
+            <h3 style="justify-content: center;">Graph RAG</h3>
+            <p>融合知识图谱（实体/时间四元组），支持跨文档的深度多跳关联推理。</p>
+        </div>
+        <div class="card" style="text-align: center; border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(0,240,255,0.2);">
+            <div class="icon-circle" style="margin: 0 auto 15px; background: var(--neon-blue); color: var(--bg-base);">v4</div>
+            <h3 style="justify-content: center; color: var(--neon-blue);">Agentic RAG</h3>
+            <p>智能体驱动，具备意图路由、主动补全、多次交互与自我纠错验证能力。</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 6: RAG 深度比对图 (新增) -->
+<div class="slide-container">
+    <h2 class="slide-title">RAG 演进：四大架构能力深度比对</h2>
+    <div class="card" style="padding: 0; overflow: hidden; border-radius: 12px; width: 100%;">
+        <table style="width: 100%; font-size: 15px;">
+            <thead>
+                <tr>
+                    <th style="width: 12%;">对比维度</th>
+                    <th style="width: 22%;">Naive RAG</th>
+                    <th style="width: 22%;">Advanced RAG</th>
+                    <th style="width: 22%;">Graph RAG</th>
+                    <th style="width: 22%;"><span class="highlight">Agentic RAG</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><b style="color: var(--text-bright);">核心思想</b></td>
+                    <td>基础检索与生成</td>
+                    <td>优化检索策略与块质量</td>
+                    <td>结构化图谱关联推理</td>
+                    <td><b class="highlight-green">智能体自主驱动与闭环反思</b></td>
+                </tr>
+                <tr>
+                    <td><b style="color: var(--text-bright);">数据结构</b></td>
+                    <td>纯文本分块/向量</td>
+                    <td>向量 + 元数据标注</td>
+                    <td>实体/关系三(四)元组图谱</td>
+                    <td><b class="highlight-green">多模态/混合知识库/API</b></td>
+                </tr>
+                <tr>
+                    <td><b style="color: var(--text-bright);">检索方式</b></td>
+                    <td>字面/余弦相似度匹配</td>
+                    <td>混合检索 + 动态重排</td>
+                    <td>多跳图谱遍历 (Multi-hop)</td>
+                    <td><b class="highlight-green">意图路由 + 动态工具调用</b></td>
+                </tr>
+                <tr>
+                    <td><b style="color: var(--text-bright);">是否会思考</b></td>
+                    <td>否 (单向线性)</td>
+                    <td>否 (单向线性)</td>
+                    <td>否 (依赖图结构提取)</td>
+                    <td><b class="highlight-green">是 (ReAct, 自我纠错)</b></td>
+                </tr>
+                <tr>
+                    <td><b style="color: var(--text-bright);">擅长问题</b></td>
+                    <td>简单明确的事实提取</td>
+                    <td>高精度、复杂的知识问答</td>
+                    <td>跨文档、多实体的关联分析</td>
+                    <td><b class="highlight-green">开放域决策、多步聚合任务</b></td>
+                </tr>
+                <tr>
+                    <td><b style="color: var(--text-bright);">适用场景</b></td>
+                    <td>基础 FAQ 问答助手</td>
+                    <td>企业规章/专业文档知识库</td>
+                    <td>股权穿透、医疗诊断关联</td>
+                    <td><b class="highlight-green">业务自动化、BI 分析流</b></td>
+                </tr>
+                <tr>
+                    <td><b style="color: var(--text-bright);">典型问题示例</b></td>
+                    <td>"公司的年假政策是什么？"</td>
+                    <td>"23年Q3净利润和毛利是多少？"</td>
+                    <td>"马斯克创办公司的现任CEO是谁？"</td>
+                    <td><b class="highlight-green">"对比竞品A这半年的销售趋势并给建议。"</b></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Slide 7: AI Agent vs 传统 RAG -->
+<div class="slide-container">
+    <h2 class="slide-title">对比：传统 RAG vs Agent 架构</h2>
+    <div class="card" style="padding: 0; overflow: hidden; border-radius: 12px;">
+        <table>
+            <thead>
+                <tr>
+                    <th>特征维度</th>
+                    <th>传统 RAG (被动检索)</th>
+                    <th><span class="highlight">AI Agent (自治系统)</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><b>交互逻辑</b></td>
+                    <td>单向线性：提问 -> 查库 -> 组装答案</td>
+                    <td><b class="highlight-green">闭环反馈：感知 -> 规划 -> 查库/调工具 -> 反思 -> 生成</b></td>
+                </tr>
+                <tr>
+                    <td><b>处理边界</b></td>
+                    <td>静态企业文档阅读理解</td>
+                    <td><b class="highlight-green">动态业务流程、跨系统计算、图表渲染与写操作</b></td>
+                </tr>
+                <tr>
+                    <td><b>意图深度</b></td>
+                    <td>依赖原始 Query 进行相似度匹配</td>
+                    <td><b class="highlight-green">通过对话记忆补全上下文，识别深层潜台词</b></td>
+                </tr>
+                <tr>
+                    <td><b>容错机制</b></td>
+                    <td>极低（检索失败即产生严重幻觉）</td>
+                    <td><b class="highlight-green">极高（具备自评 Reviewer 节点，错误时触发重试）</b></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Slide 8: 过场 - 架构设计 -->
+<div class="slide-container" style="justify-content: center;">
+    <div class="section-header">
+        <h2>02. 核心架构深度拆解</h2>
+        <p>感知 (Perception) / 决策 (Brain) / 执行 (Action) / 反思 (Reflection)</p>
+        <hr>
+    </div>
+</div>
+
+<!-- Slide 9: AI Agent 核心架构全景图 -->
+<div class="slide-container">
+    <div class="slide-subtitle" style="color: var(--neon-blue); font-family: 'Rajdhani', sans-serif; letter-spacing: 2px; margin-bottom: 10px;">CORE ARCHITECTURE</div>
+    <h2 class="slide-title">AI Agent 核心架构全景图</h2>
+    
+    <div class="card" style="width: 100%; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; position: relative; border-color: rgba(255,255,255,0.1);">
+        
+        <!-- 背景横向连线能量流 -->
+        <div style="position: absolute; top: 35%; left: 10%; right: 10%; height: 4px; background: linear-gradient(90deg, var(--neon-blue), var(--neon-green), var(--neon-purple)); z-index: 0; opacity: 0.3; box-shadow: 0 0 15px rgba(0,255,255,0.5);"></div>
+        
+        <!-- 反思层反馈虚线 -->
+        <svg style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; z-index: 0;">
+            <path d="M 980 250 Q 580 600 180 250" fill="none" stroke="var(--neon-orange)" stroke-width="3" stroke-dasharray="12,8" style="animation: dash 3s linear infinite;"/>
+            <polygon points="180,250 190,265 170,260" fill="var(--neon-orange)" />
+        </svg>
+
+        <!-- 三大核心层级 -->
+        <div style="display: flex; justify-content: space-around; align-items: center; width: 100%; height: 50%; z-index: 1;">
+            <!-- 感知层 -->
+            <div class="card" style="width: 280px; height: 280px; text-align: center; border-color: var(--neon-blue); display: flex; flex-direction: column; justify-content: center; background: var(--bg-base);">
+                <div class="icon-circle" style="margin: 0 auto 15px;"><i class="fa-solid fa-eye"></i></div>
+                <h3 style="justify-content: center; font-size: 24px; color: var(--neon-blue);">感知层<br><small style="font-size: 16px; color: var(--text-main); font-weight: normal;">(Perception)</small></h3>
+                <p style="font-size: 14px;">多模态接入 / 意图识别 / 实体提取</p>
+            </div>
+
+            <div class="tech-arrow"><i class="fa-solid fa-angles-right"></i></div>
+
+            <!-- 决策层 -->
+            <div class="card" style="width: 280px; height: 280px; text-align: center; border-color: var(--neon-green); display: flex; flex-direction: column; justify-content: center; background: var(--bg-base);">
+                <div class="icon-circle" style="margin: 0 auto 15px; color: var(--neon-green); border-color: var(--neon-green); background: rgba(0,255,157,0.1);"><i class="fa-solid fa-microchip"></i></div>
+                <h3 style="justify-content: center; font-size: 24px; color: var(--neon-green);">决策层<br><small style="font-size: 16px; color: var(--text-main); font-weight: normal;">(Brain/Planning)</small></h3>
+                <p style="font-size: 14px;">思维链(CoT) / 任务拆解 / 记忆检索</p>
+            </div>
+
+            <div class="tech-arrow" style="color: var(--neon-green);"><i class="fa-solid fa-angles-right"></i></div>
+
+            <!-- 执行层 -->
+            <div class="card" style="width: 280px; height: 280px; text-align: center; border-color: var(--neon-purple); display: flex; flex-direction: column; justify-content: center; background: var(--bg-base);">
+                <div class="icon-circle" style="margin: 0 auto 15px; color: var(--neon-purple); border-color: var(--neon-purple); background: rgba(176,38,255,0.1);"><i class="fa-solid fa-robot"></i></div>
+                <h3 style="justify-content: center; font-size: 24px; color: var(--neon-purple);">执行层<br><small style="font-size: 16px; color: var(--text-main); font-weight: normal;">(Action)</small></h3>
+                <p style="font-size: 14px;">API调用 / 代码沙盒 / 硬件指令</p>
+            </div>
+        </div>
+
+        <!-- 反思层 -->
+        <div style="display: flex; justify-content: center; margin-top: 65px; z-index: 1;">
+            <div class="card" style="width: 400px; text-align: center; border-color: var(--neon-orange); padding: 15px; background: rgba(245, 158, 11, 0.08); box-shadow: 0 0 20px rgba(245, 158, 11, 0.1);">
+                <h3 style="justify-content: center; color: var(--neon-orange); font-size: 22px; margin-bottom: 5px;"><i class="fa-solid fa-arrows-rotate"></i> 反思层 (Reflection)</h3>
+                <p style="font-size: 15px; color: var(--text-bright);">自我评估 / 结果校验 / 错误重试闭环</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 10: 感知层设计 -->
+<div class="slide-container">
+    <div class="slide-subtitle" style="color: var(--neon-blue); font-family: 'Rajdhani', sans-serif; letter-spacing: 2px; margin-bottom: 10px;">MODULE 01: PERCEPTION LAYER</div>
+    <h2 class="slide-title">感知层设计：智能体的“五感”解析器</h2>
+    <div class="card" style="margin-bottom: 24px;">
+        <p>感知层是防止“垃圾进、垃圾出”的第一道防线。核心在于将复杂现实世界的异构数据、冗余口语转化为大模型可理解的高质量结构化 Payload。</p>
+    </div>
+    
+    <div class="tech-flow">
+        <div class="tech-node">多源异构数据采集<br><span>PDF / DB / API / 语音</span></div>
+        <div class="tech-arrow"><i class="fa-solid fa-angles-right"></i></div>
+        <div class="tech-node" style="border-color: var(--neon-purple)">预处理与清洗<br><span>OCR / Chunking / 过滤噪音</span></div>
+        <div class="tech-arrow"><i class="fa-solid fa-angles-right"></i></div>
+        <div class="tech-node" style="border-color: var(--neon-green)">意图识别与槽位提取<br><span>轻量模型序列分类</span></div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <h3><i class="fa-solid fa-filter highlight"></i> 预处理与结构化切片</h3>
+            <p>对密集型财报、表格进行智能切片（Chunking），剥离页眉页脚等干扰项，转化为标准 JSON。解决传统按长度暴切导致的语义截断痛点。</p>
+        </div>
+        <div class="card">
+            <h3><i class="fa-solid fa-crosshairs highlight-green"></i> 意图与槽位精准抽取</h3>
+            <p><b>最新实践：</b>采用微调后的 <b>1.5B 轻量化模型 + Embedding</b> 进行极速意图分类与关键参数（Slot）提取，毫秒级响应，大幅降低 Token 成本。</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 11: 决策层设计 -->
+<div class="slide-container">
+    <div class="slide-subtitle" style="color: var(--neon-blue); font-family: 'Rajdhani', sans-serif; letter-spacing: 2px; margin-bottom: 10px;">MODULE 02: COGNITION LAYER (BRAIN)</div>
+    <h2 class="slide-title">决策层设计：构建可拆解的复杂逻辑链</h2>
+    
+    <div class="tech-flow" style="margin-bottom: 20px;">
+        <div class="tech-node" style="border-color: var(--neon-green)">目标管理接收<br><span>校验/反问补齐参数</span></div>
+        <div class="tech-arrow"><i class="fa-solid fa-angles-right"></i></div>
+        <div class="tech-node" style="border-color: var(--neon-blue)">思维链 (CoT) 推理<br><span>模拟解题步骤拆解</span></div>
+        <div class="tech-arrow"><i class="fa-solid fa-angles-right"></i></div>
+        <div class="tech-node" style="border-color: var(--neon-purple)">计划与调度编排<br><span>生成资源与工具调用树</span></div>
+    </div>
+
+    <div class="grid-3">
+        <div class="card">
+            <h3><i class="fa-solid fa-bullseye highlight"></i> 目标管理 (Goal)</h3>
+            <p>防止系统失控。<b style="color: var(--text-bright);">老板想查询报税数据时，决策层不知道具体企业，会向老板追问具体企业、具体账期等核心信息后继续执行。</b></p>
+        </div>
+        <div class="card">
+            <h3><i class="fa-solid fa-sitemap highlight-green"></i> 推理与规划 (Plan)</h3>
+            <p>面对复杂业务分析，系统能自主拆分为：1.查库获取维度 -> 2.执行SQL汇总 -> 3.渲染饼图 等原子级任务的调度序列。</p>
+        </div>
+        <div class="card">
+            <h3><i class="fa-solid fa-database highlight-purple"></i> 记忆管理系统</h3>
+            <p>融合瞬时上下文(Context)、任务状态短期记忆(State)以及沉淀成功经验的长期记忆(RAG图谱)，辅助下一步规划。</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 12: 执行层设计 -->
+<div class="slide-container">
+    <div class="slide-subtitle" style="color: var(--neon-blue); font-family: 'Rajdhani', sans-serif; letter-spacing: 2px; margin-bottom: 10px;">MODULE 03: ACTION LAYER</div>
+    <h2 class="slide-title">执行层设计：突破次元壁的物理手脚</h2>
+    <div class="card" style="margin-bottom: 20px;">
+        <p>执行层是 Agent 与外部环境（API、SaaS系统、物理世界）交互的“手和脚”。设计重点在于<b>高可用性、安全隔离以及协议的标准化</b>。</p>
+    </div>
+
+    <div class="grid-3">
+        <div class="card">
+            <div class="icon-circle" style="color: var(--neon-purple); border-color: var(--neon-purple);"><i class="fa-solid fa-plug"></i></div>
+            <h3 style="margin-top: 15px;">Tool Calling</h3>
+            <p>统一 API 调用协议。根据大模型输出的 JSON 参数，自动触发企业内部 OA、财税系统能力。</p>
+        </div>
+        <div class="card">
+            <div class="icon-circle" style="color: var(--neon-purple); border-color: var(--neon-purple);"><i class="fa-solid fa-code"></i></div>
+            <h3 style="margin-top: 15px;">Code Interpreter</h3>
+            <p>在隔离沙盒中运行 Python/SQL。大模型仅生成代码并交由执行层运算。</p>
+        </div>
+        <div class="card">
+            <div class="icon-circle" style="color: var(--neon-purple); border-color: var(--neon-purple);"><i class="fa-brands fa-hubspot"></i></div>
+            <h3 style="margin-top: 15px;">MCP 协议基建</h3>
+            <p>通过MCP（Model Context Protocol），实现外部能力的即插即用，打通系统之间的数据孤岛。</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 13: 反思层设计 -->
+<div class="slide-container">
+    <div class="slide-subtitle" style="color: var(--neon-orange); font-family: 'Rajdhani', sans-serif; letter-spacing: 2px; margin-bottom: 10px;">MODULE 04: REFLECTION LAYER</div>
+    <h2 class="slide-title" style="text-shadow: 0 0 10px rgba(245, 158, 11, 0.3);">反思层设计：智能体的自我进化机制</h2>
+    <div class="card" style="margin-bottom: 24px; border-color: rgba(245,158,11,0.3);">
+        <p>反思层（Reflection）是 Agent 区别于传统自动化脚本的核心。它不盲目接受 LLM 或检索系统的初步结果，而是引入<b>“批判者”</b>角色进行二次校验与闭环纠错。</p>
+    </div>
+    
+    <div class="grid-2">
+        <div class="card" style="border-top-color: var(--neon-orange);">
+            <h3><i class="fa-solid fa-magnifying-glass-chart highlight-orange"></i> 核心反思机制</h3>
+            <ul style="margin-top: 15px;">
+                <li><b class="highlight-orange">自我批评 (Self-Criticism)：</b> 检查生成的执行计划是否逻辑自洽，是否遗漏了用户设定的关键约束条件。</li>
+                <li><b class="highlight-orange">结果验证 (Verification)：</b> 检查生成的代码是否报错、SQL 查询结果是否为空、调用的外部 API 是否返回失败。</li>
+                <li><b class="highlight-orange">幻觉拦截：</b> 通过严格对比检索到的事实源文档，确保最终输出结果非虚构。</li>
+            </ul>
+        </div>
+        <div class="card" style="border-top-color: var(--neon-orange);">
+            <h3><i class="fa-solid fa-terminal highlight-orange"></i> 典型应用：ReAct 与自愈</h3>
+            <div style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; font-family: monospace; font-size: 14px; line-height: 1.6; color: var(--text-main); margin-top: 10px;">
+                <span style="color: var(--neon-blue);">Thought:</span> 尝试查询 A 公司财报。<br>
+                <span style="color: var(--neon-green);">Action:</span> get_finance_data(company="A")<br>
+                <span style="color: #ef4444;">Observation:</span> API 报错，缺失必填参数 year。<br>
+                <span style="color: var(--neon-orange); font-weight: 700;">Reflection:</span> <b style="color: var(--text-bright);">API 缺少年份，我需要重试。</b><br>
+                <span style="color: var(--neon-blue);">Thought:</span> 重新组装参数，查询 2026 年数据。
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 14: Agent-RAG 流程图 -->
+<div class="slide-container">
+    <h2 class="slide-title">Agent-RAG：一体化执行流程全景</h2>
+    <div class="data-line"></div>
+    <div style="display: flex; justify-content: space-between; align-items: stretch; width: 100%; gap: 20px; padding: 20px 0;">
+        <div class="card" style="flex: 1; text-align: center; border-color: var(--neon-blue);">
+            <i class="fa-solid fa-user-astronaut" style="font-size: 32px; color: var(--neon-blue); margin-bottom: 15px;"></i>
+            <h3>1. Query 接收</h3>
+            <p style="font-size: 14px;">用户请求 / 上下文注入</p>
+        </div>
+        <div style="display: flex; align-items: center; color: var(--neon-blue);"><i class="fa-solid fa-chevron-right"></i></div>
+        
+        <div class="card" style="flex: 1.5; text-align: center; border-color: var(--neon-green);">
+            <i class="fa-solid fa-network-wired" style="font-size: 32px; color: var(--neon-green); margin-bottom: 15px;"></i>
+            <h3>2. 意图路由与规划</h3>
+            <p style="font-size: 14px;">基础问答 -> 文档库<br>数据分析 -> SQL 工具链</p>
+        </div>
+        <div style="display: flex; align-items: center; color: var(--neon-green);"><i class="fa-solid fa-chevron-right"></i></div>
+        
+        <div class="card" style="flex: 1.5; text-align: center; border-color: var(--neon-purple);">
+            <i class="fa-solid fa-database" style="font-size: 32px; color: var(--neon-purple); margin-bottom: 15px;"></i>
+            <h3>3. 混合执行与多跳</h3>
+            <p style="font-size: 14px;">图谱扩散查询 / BM25<br>外部 API 请求返回结果</p>
+        </div>
+        <div style="display: flex; align-items: center; color: var(--neon-purple);"><i class="fa-solid fa-chevron-right"></i></div>
+        
+        <div class="card" style="flex: 1; text-align: center; border-color: var(--neon-orange);">
+            <i class="fa-solid fa-shield-halved" style="font-size: 32px; color: var(--neon-orange); margin-bottom: 15px;"></i>
+            <h3 style="color: var(--neon-orange);">4. 反思验证</h3>
+            <p style="font-size: 14px;">Review 校验合规与准确率</p>
+        </div>
+    </div>
+    <div class="data-line"></div>
+</div>
+
+<!-- Slide 15: 过场 - 记忆系统与协作 -->
+<div class="slide-container" style="justify-content: center;">
+    <div class="section-header">
+        <h2>03. 核心机制：记忆与协作</h2>
+        <p>让智能体“越用越聪明”，从单兵作战走向团队协同</p>
+        <hr>
+    </div>
+</div>
+
+<!-- Slide 16: 记忆系统 (Memory) 架构 -->
+<div class="slide-container">
+    <h2 class="slide-title">Memory：打破单轮对话的“遗忘”魔咒</h2>
+    <div class="grid-3">
+        <div class="card" style="position: relative; overflow: hidden;">
+            <div class="step-num">1</div>
+            <h3><i class="fa-solid fa-bolt highlight"></i> 瞬时记忆</h3>
+            <p><b>机制：</b>将当前 Session 原始的交互数据（如用户指令、SQL报错）暂存在 Redis 中。<br><br><b>功能：</b>支撑当前的上下文意图补全，当超出阈值时会自动触发遗忘清理，避免污染。</p>
+        </div>
+        <div class="card" style="position: relative; overflow: hidden;">
+            <div class="step-num">2</div>
+            <h3><i class="fa-solid fa-briefcase highlight-green"></i> 短期记忆</h3>
+            <p><b>机制：</b>作为智能体的“临时工作台”，存储与当前核心任务强相关的信息快照。<br><br><b>功能：</b>用于复杂多步任务（如连续三个接口测试）的状态维系，任务完结即消融。</p>
+        </div>
+        <div class="card" style="position: relative; overflow: hidden;">
+            <div class="step-num">3</div>
+            <h3><i class="fa-solid fa-cube highlight-purple"></i> 长期记忆</h3>
+            <p><b>机制：</b>经过价值筛选（提炼），将高频特征、用户偏好持久化写入向量/图数据库。<br><br><b>功能：</b>经验的宝库。遇到新 Bug 时自动复用历史成功代码模板，实现跨域泛化。</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 17: 多智能体编排模式图 -->
+<div class="slide-container">
+    <h2 class="slide-title">多智能体编排模式</h2>
+    <div style="width: 100%; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;">
+        <img src="多智能体编排模式.jpg" alt="" style="width: 100%; height: 100%; object-fit: contain; object-position: center;">
+    </div>
+</div>
+
+<!-- Slide 18: 多智能体协作模式 - 层级式 -->
+<div class="slide-container">
+    <h2 class="slide-title">Multi-Agent：模式A - 层级式 (Hierarchy)</h2>
+    <div class="two-column">
+        <div class="card">
+            <h3><i class="fa-solid fa-sitemap highlight"></i> 架构：项目经理制</h3>
+            <p>存在一个全局把控的“Planner”主节点，负责接收大目标并垂直拆解；下属多个具备特定 Profile 的“Worker”智能体各自领受子任务并行处理，最后由主节点汇总渲染。</p>
+            <ul style="margin-top: 15px;">
+                <li><b>优点：</b> 权责清晰，顶层控制力强，结果易收敛。</li>
+                <li><b>场景：</b> 复杂的跨表财报分析、年度经营报告自动生成。</li>
+            </ul>
+        </div>
+        <div class="card" style="display: flex; align-items: center; justify-content: center; background: rgba(0,240,255,0.02);">
+            <div style="text-align: center;">
+                <div class="tech-node" style="margin: 0 auto; width: 150px;">Manager (Planner)</div>
+                <div style="font-size: 24px; color: var(--neon-blue); margin: 10px 0;"><i class="fa-solid fa-sitemap"></i></div>
+                <div style="display: flex; gap: 20px;">
+                    <div class="tech-node" style="width: 120px; font-size: 14px; border-color: var(--neon-green)">Data Agent</div>
+                    <div class="tech-node" style="width: 120px; font-size: 14px; border-color: var(--neon-purple)">Calc Agent</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 19: 多智能体协作模式 - 流水线 -->
+<div class="slide-container">
+    <h2 class="slide-title">Multi-Agent：模式B - 流水线 (Pipeline)</h2>
+    <div class="two-column">
+        <div class="card" style="display: flex; flex-direction: column; justify-content: center;">
+            <div class="tech-flow" style="flex-direction: column; gap: 15px; padding: 0;">
+                <div class="tech-node" style="width: 80%;">Agent 1: 需求解析</div>
+                <div class="tech-arrow" style="transform: rotate(90deg); margin: -5px 0;"><i class="fa-solid fa-angles-right"></i></div>
+                <div class="tech-node" style="width: 80%; border-color: var(--neon-green)">Agent 2: 代码/SQL 生成</div>
+                <div class="tech-arrow" style="transform: rotate(90deg); margin: -5px 0;"><i class="fa-solid fa-angles-right"></i></div>
+                <div class="tech-node" style="width: 80%; border-color: var(--neon-purple)">Agent 3: 渲染图表可视化</div>
+            </div>
+        </div>
+        <div class="card">
+            <h3><i class="fa-solid fa-arrow-right-long highlight-green"></i> 架构：工厂装配线</h3>
+            <p>任务在智能体之间单向传递流转。上游 Agent 提取的结构化特征直接作为下游 Agent 的 Prompt 组装变量。如同软件工程的工作流（Workflow）。</p>
+            <ul style="margin-top: 15px;">
+                <li><b>优点：</b> 流程高度标准化，资源消耗可预估，执行效率极高。</li>
+                <li><b>场景：</b> 销售趋势报表固定生成、标准化代码测试覆盖。</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 20: 过场 - 落地实战 -->
+<div class="slide-container" style="justify-content: center;">
+    <div class="section-header">
+        <h2>04. 落地实战与最佳实践</h2>
+        <p>直击生产环境的架构经验与系统演进</p>
+        <hr>
+    </div>
+</div>
+
+<!-- Slide 21: 架构对比：Workflow vs Agentic RAG -->
+<div class="slide-container">
+    <h2 class="slide-title">架构对比：Workflow vs Agentic RAG</h2>
+    <div style="width: 100%; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;">
+        <img src="workflow和agentic rag对比.jpg" alt="" style="width: 100%; height: 100%; object-fit: contain; object-position: center;">
+    </div>
+</div>
+
+<!-- Slide 22: 系统架构：个性化商品推荐系统 -->
+<div class="slide-container">
+    <h2 class="slide-title">智能客服个性化商品推荐架构</h2>
+    <div style="width: 100%; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;">
+        <img src="智能客服个性化商品推荐架构图2.png" alt="" style="width: 100%; height: 100%; object-fit: contain; object-position: center;">
+    </div>
+</div>
+
+<!-- Slide 23: 企业案例具体流程：智能客服推荐 -->
+<div class="slide-container">
+    <h2 class="slide-title">真实案例解析：智能客服个性化商品推荐</h2>
+    <div class="card" style="margin-bottom: 20px;">
+        <p><b>业务痛点：</b> 传统客服极度依赖人工经验，面对 B 端客户无法秒级判断企业税务状态，导致推荐的产品包转化率极低。</p>
+    </div>
+    <div class="grid-3">
+        <div class="card" style="border-top-color: var(--neon-blue);">
+            <h3><i class="fa-solid fa-id-card-clip highlight"></i> 1. 画像动态嗅探</h3>
+            <p>Agent 主动调用后台 API，核实客户最新资质为“小规模纳税人”，且查询历史订单发现“未购买基础记账产品”。</p>
+        </div>
+        <div class="card" style="border-top-color: var(--neon-green);">
+            <h3><i class="fa-solid fa-microchip highlight-green"></i> 2. 策略动态推理</h3>
+            <p>基于知识图谱匹配：策略 Agent 推理客户首要痛点为基础合规，主动拦截高级税务筹划产品的推荐逻辑。</p>
+        </div>
+        <div class="card" style="border-top-color: var(--neon-purple);">
+            <h3><i class="fa-solid fa-bullseye highlight-purple"></i> 3. 精准推荐输出</h3>
+            <p>自动组合“基础版记账 SaaS”并附加极简报税图谱生成最终话术。实现千人千面，转化率提升 40%。</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 24: 核心架构优势 -->
+<div class="slide-container">
+    <h2 class="slide-title">为什么必须转向 Agentic 架构？</h2>
+    <div class="grid-3">
+        <div class="card">
+            <div class="icon-circle"><i class="fa-solid fa-user-check"></i></div>
+            <h3>深度个性化推荐</h3>
+            <p>打破死板的“If-Else”硬编码规则树。通过感知层动态拉取用户的画像标签与历史会话特征，由大模型实时推演组合最适配的服务体验。</p>
+        </div>
+        <div class="card">
+            <div class="icon-circle"><i class="fa-solid fa-shuffle"></i></div>
+            <h3>动态决策与自愈</h3>
+            <p>面对包含多维变量和缺失信息的复杂诉求，系统能主动发起 Re-asking（反问）补齐参数，并在 API 异常时自主寻优切换备选策略。</p>
+        </div>
+        <div class="card">
+            <div class="icon-circle"><i class="fa-solid fa-infinity"></i></div>
+            <h3>可持续学习进化</h3>
+            <p>沉淀业务的数字资产。通过 Memory 系统记录研发 Bug 处置过程或金牌销售的成功话术，化个人经验为系统的全域长期记忆库。</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 25: 最佳实践：模块化与可配置 -->
+<div class="slide-container">
+    <h2 class="slide-title">最佳实践：模块化设计与可配置化</h2>
+    <div class="grid-2">
+        <div class="card">
+            <h3><i class="fa-solid fa-cubes highlight"></i> 极度解耦的架构</h3>
+            <p>绝不将业务逻辑写死在大模型 Prompt 里。</p>
+            <p style="margin-top: 10px;"><b>方法：</b> 采用微服务架构，将业务风控规则、系统状态流转抽出为独立的服务节点，与大模型的规划推理彻底物理隔离。</p>
+            <p style="margin-top: 10px;"><b>好处：</b> 大幅提升系统可维护性与确定性，避免大模型“幻觉”污染核心业务数据，同时实现业务逻辑的热更新而无需重新调整复杂的 Prompt 框架。</p>
+        </div>
+        <div class="card">
+            <h3><i class="fa-solid fa-sliders highlight-green"></i> 提示词与预设可配置</h3>
+            <p>将智能体的 Profile（如角色设定、严格的 JSON 格式要求、特定话术红线）提取为配置中心文件。让业务人员能在可视化面板进行快速微调，降低算法研发对硬代码的依赖。</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 26: 最佳实践：人机协同 -->
+<div class="slide-container">
+    <h2 class="slide-title">最佳实践：HITL (人机协同机制)</h2>
+    <div class="two-column">
+        <div class="card">
+            <h3 style="color: var(--neon-purple);">破除全自动化“黑盒”迷信</h3>
+            <p>在当前技术水位下，对重要 ToB 场景推行 100% 端到端自治是极其危险的。<br><br>必须在系统中巧妙设计 <b>Human-in-the-loop (环内人类)</b> 机制。将人类定位为“最终决策辅助者”与“审批把关人”。</p>
+        </div>
+        <div class="card" style="background: rgba(0, 255, 157, 0.05); border-color: var(--neon-green);">
+            <h3 style="color: var(--neon-green);"><i class="fa-solid fa-clipboard-check"></i> 典型介入场景设计</h3>
+            <ul style="margin-top: 15px;">
+                <li><b>AI 记账报税：</b> 遇到自动化记账报税失败或账目逻辑冲突，系统挂起并自动交由人工介入处理。</li>
+                <li style="margin-top: 15px;"><b>AI 开票服务：</b> 在开票信息识别异常、客户情绪出现异常（通过文本情感感知）、或开票过程异常中断时，强制人工客服无缝接入。</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 27: 最佳实践：原子能力封装 -->
+<div class="slide-container">
+    <h2 class="slide-title">最佳实践：原子能力与 Skills 封装</h2>
+    <div class="card" style="width: 100%;">
+        <h3 style="color: var(--neon-purple);"><i class="fa-solid fa-layer-group"></i> 封装原子能力 (Skills)</h3>
+        <p>将复杂的业务操作打散为独立的、可复用的原子级技能 (Skills)，并在此基础上进行高阶抽象与封装。</p>
+        <div class="grid-3" style="margin-top: 20px;">
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; border-top: 2px solid var(--neon-blue);">
+                <h4 style="color: var(--neon-blue); margin-top: 0; font-size: 18px;">1. 方法论层次封装</h4>
+                <p style="font-size: 14px;">将企业内部专家的行业经验（如：小规模纳税人报税SOP）固化为标准化的 Prompt 模板或工作流链条。</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; border-top: 2px solid var(--neon-green);">
+                <h4 style="color: var(--neon-green); margin-top: 0; font-size: 18px;">2. 决策逻辑封装</h4>
+                <p style="font-size: 14px;">将业务风控规则、条件判断逻辑封装为独立的判断类 Skill，由大模型在规划阶段调用，而非自行计算。</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; border-top: 2px solid var(--neon-purple);">
+                <h4 style="color: var(--neon-purple); margin-top: 0; font-size: 18px;">3. 行为模式封装</h4>
+                <p style="font-size: 14px;">将系统 API（如：生成开票链接、查询 CRM）封装为标准化工具包，统一输入输出格式，供模型随时按需组合调用。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 28: 过场 - 未来演进 -->
+<div class="slide-container" style="justify-content: center;">
+    <div class="section-header">
+        <h2>05. 技术架构的演进前瞻</h2>
+        <p>向自主系统与标准化协作协议跃迁</p>
+        <hr>
+    </div>
+</div>
+
+<!-- Slide 29: 未来演进 1 -->
+<div class="slide-container">
+    <h2 class="slide-title">演进一：单任务工具 → 全景自主系统</h2>
+    <div class="grid-2">
+        <div class="card">
+            <h3 class="highlight">Current：被动触发单节点</h3>
+            <p>目前的智能体多数仍需要用户的初始 Prompt 唤醒，执行完毕单次数据分析、报告生成或信息梳理后即陷入休眠。</p>
+        </div>
+        <div class="card" style="border-top-color: var(--neon-green)">
+            <h3 class="highlight-green">Future：自主运行 (Autonomic)</h3>
+            <p>基于底层的长效 Memory 与定时唤醒机制。系统将具备后台长驻能力，自主进行全网态势感知、服务器监控巡检，当检测到阈值偏离时，无需指令主动生成并下发修复方案。</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 30: 未来演进 2 -->
+<div class="slide-container">
+    <h2 class="slide-title">演进二：单一 RAG → Agentic RAG</h2>
+    <div class="card" style="margin-bottom: 24px;">
+        <p>检索增强系统自身将演化为一个包含内部自我管理逻辑的“活体图谱”，而非机械的向量数据库。</p>
+    </div>
+    <div class="grid-3">
+        <div class="card">
+            <h3><i class="fa-solid fa-pencil highlight"></i> 数据自清洁</h3>
+            <p>系统能够在与大量用户交互的过程中，主动发现知识库文档中陈旧或冲突的规章制度，并在后台标记打分。</p>
+        </div>
+        <div class="card">
+            <h3><i class="fa-solid fa-network-wired highlight-green"></i> 隐式多跳重构</h3>
+            <p>不再单纯依靠抽取四元组，系统在运行时能动态抽象不同知识片断的潜在逻辑，形成具备自适应权重的神经检索网络。</p>
+        </div>
+        <div class="card">
+            <h3><i class="fa-solid fa-hand highlight-purple"></i> 知识主动反哺</h3>
+            <p>当系统发现连续多位用户提问某新领域且检索失败时，触发预警，自动生成需求清单，反向提醒业务人员补充专门的预料库。</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 31: 未来演进 3 -->
+<div class="slide-container">
+    <h2 class="slide-title">演进三：私有接口 → Skills & MCP 协议基建化</h2>
+    <div class="two-column">
+        <div class="card">
+            <h3 style="margin-bottom: 15px;">模型上下文协议 (MCP) 统一</h3>
+            <p>过去，每增加一个外部能力（调日历、读财务DB）都需要写大量粘合代码，导致大模型工具链极度碎片化和高耦合。</p>
+            <p style="margin-top: 15px;">未来，<b>MCP（Model Context Protocol）</b> 将成为大模型时代的“USB接口标准”。任何企业资产只需暴露为标准 MCP 服务，底层不同厂商的 AI 就能像装载插拔件（Skills）一样，零代码自动解析并无缝调用，打通数据孤岛。</p>
+        </div>
+        <div class="img-card" style="background: rgba(0,240,255,0.05); display: flex; align-items: center; justify-content: center; border: 1px solid var(--neon-blue); border-radius: 12px;">
+            <div style="text-align: center;">
+                <i class="fa-brands fa-hubspot highlight" style="font-size: 80px; margin-bottom: 20px;"></i>
+                <h3 style="color: var(--text-bright);">Standardized MCP Hub</h3>
+                <p style="font-size: 14px; color: var(--text-main);">Universal Access for Multi-Agents</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 32: 结束页 -->
+<div class="slide-container" style="justify-content: center; align-items: center; text-align: center;">
+    <div style="margin-bottom: 40px;">
+        <i class="fa-solid fa-microchip" style="font-size: 60px; color: var(--neon-blue); animation: pulse-glow 2s infinite;"></i>
+    </div>
+    <h1 style="font-size: 80px; color: var(--text-bright); font-family: 'Rajdhani', sans-serif; margin: 0; text-shadow: 0 0 30px rgba(0, 240, 255, 0.4);">
+        END OF TRANSMISSION
+    </h1>
+    <p style="color: var(--neon-green); font-size: 26px; font-weight: 600; margin-top: 20px; letter-spacing: 2px;">
+        构建高可用数字底座 / 重塑企业生产力
+    </p>
+    <div style="margin-top: 60px; color: var(--text-main); font-size: 18px; display: flex; gap: 20px;">
+        <span style="background: rgba(255,255,255,0.05); padding: 8px 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);"><i class="fa-regular fa-comments"></i> Q&A</span>
+    </div>
+</div>
+
+</body>
+</html>
